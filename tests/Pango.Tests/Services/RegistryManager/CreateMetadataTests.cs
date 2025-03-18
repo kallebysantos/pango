@@ -13,10 +13,13 @@ public partial class RegistryManagerTests
     [InlineData(["hello-world", "HelloWorld.razor", 1])] // Single file component
     public void ShouldCreateMetadataForValidComponent(string name, string component, int fileCount)
     {
-        var registryUri = new Uri("https://test.pango/UI");
-        var manager = new RegistryManager(new(registryUri));
+        var manager = new RegistryManager();
 
-        var componentPath = Path.Combine(Directory.GetCurrentDirectory(), componentsFolder, component);
+        var componentPath = Path.Combine(
+            Directory.GetCurrentDirectory(),
+            componentsFolder,
+            component
+        );
 
         var componentMetadata = manager.CreateComponentMetadata(new(componentPath));
 
@@ -25,18 +28,12 @@ public partial class RegistryManagerTests
         var metadata = componentMetadata.Expect();
         Assert.IsType<ComponentMetadata>(metadata);
 
-        Assert.Equal(
-            expected: name,
-            actual: metadata.Name
-        );
+        Assert.Equal(expected: name, actual: metadata.Name);
         Assert.EndsWith(
             expectedEndString: component.Replace(".razor", string.Empty),
             actualString: metadata.Source
         );
-        Assert.Equal(
-            expected: fileCount,
-            actual: metadata.Files.Length
-        );
+        Assert.Equal(expected: fileCount, actual: metadata.Files.Length);
     }
 
     [Theory]
@@ -47,10 +44,13 @@ public partial class RegistryManagerTests
     [InlineData(".")]
     public void ShouldErrorWhenInvalidComponent(string component)
     {
-        var registryUri = new Uri("https://test.pango/UI");
-        var manager = new RegistryManager(new(registryUri));
+        var manager = new RegistryManager();
 
-        var componentPath = Path.Combine(Directory.GetCurrentDirectory(), componentsFolder, component);
+        var componentPath = Path.Combine(
+            Directory.GetCurrentDirectory(),
+            componentsFolder,
+            component
+        );
 
         var componentMetadata = manager.CreateComponentMetadata(new(componentPath));
 

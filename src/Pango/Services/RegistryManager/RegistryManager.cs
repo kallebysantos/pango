@@ -41,10 +41,7 @@ public class RegistryManager() : IRegistryManager
                     .Map(component =>
                         component with
                         {
-                            Files =
-                            [
-                                .. files.Select(f => Path.Join(component.Source, f.Name)).Reverse(),
-                            ],
+                            Files = [.. files.Select(f => f.Name).Reverse()],
                         }
                     )
             );
@@ -87,11 +84,16 @@ public class RegistryManager() : IRegistryManager
             // Ensures ouput dir exists
             Directory.CreateDirectory(ouputDir);
 
+            var inputFilePath =
+                packInput.Metadata.Files.Length > 1
+                    ? Path.Combine(packInput.Metadata.Source, fileName)
+                    : fileName;
+
             using var inputFileStream = File.OpenRead(
-                Path.Combine(packInput.InputBasePath, fileName)
+                Path.Combine(packInput.InputBasePath, inputFilePath)
             );
             using var outputFileStream = File.Create(
-                Path.Combine(packInput.OutputPath, outputFileName)
+                Path.Combine(packInput.OutputPath, ouputDir, outputFileName)
             );
             using var compressor = new BrotliStream(outputFileStream, CompressionLevel.Optimal);
             await inputFileStream.CopyToAsync(compressor);

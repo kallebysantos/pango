@@ -1,5 +1,4 @@
 using System.IO.Compression;
-using System.Text.Json;
 using Pango.Abstractions;
 using Pango.Services.RegistryManager;
 using Pango.Types;
@@ -44,17 +43,25 @@ public class PackComponentTests : RegistryManagerTests, IDisposable
 
         foreach (var fileName in packedMetadata.Files)
         {
-            var filePath = Path.Combine(OutputPath, fileName);
-            var packedFile = new FileInfo(filePath);
+            var packedFile = new FileInfo(
+                Path.Combine(OutputPath, packedMetadata.Source, fileName)
+            );
 
             Assert.NotNull(packedFile);
             Assert.True(packedFile.Exists);
             Assert.Equal(RegistryManager.PackFileExtension, packedFile.Extension);
 
+            // Components can be folder or single
+            var originalFileName =
+                packedMetadata.Files.Length > 1
+                    ? Path.Combine(packedMetadata.Source, fileName)
+                    : fileName;
+
             var originalFilePath = Path.Combine(
                 ComponentsPath,
-                fileName[..^RegistryManager.PackFileExtension.Length]
+                originalFileName[..^RegistryManager.PackFileExtension.Length] // removes the ".br" extension
             );
+
             var originalFileBytes = await File.ReadAllBytesAsync(originalFilePath);
             var packedFileBytes = await File.ReadAllBytesAsync(packedFile.FullName);
 

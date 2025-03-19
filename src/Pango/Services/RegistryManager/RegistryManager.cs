@@ -7,6 +7,9 @@ namespace Pango.Services.RegistryManager;
 
 public class RegistryManager() : IRegistryManager
 {
+    public const string PackFileExtension = ".br"; // Brotli
+    public const string RazorFileExtension = ".razor"; // Brotli
+
     public Result<ComponentMetadata, IRegistryError> CreateComponentMetadata(
         CreateComponentMetadataInput metadataInput
     )
@@ -28,11 +31,13 @@ public class RegistryManager() : IRegistryManager
             .Filter(dir =>
                 dir.Name == Path.GetFileNameWithoutExtension(metadataInput.LocalComponentPath)
             )
-            .Map(dir => dir.EnumerateFiles("*.razor*"))
+            .Map(dir => dir.EnumerateFiles($"*{RazorFileExtension}*"))
             .Filter(files => files.Any())
             .OkOr<IRegistryError>(new InvalidComponentPathError())
             .AndThen(files =>
-                ResolveComponent(files.First(f => f.Extension.StartsWith(".razor")).FullName)
+                ResolveComponent(
+                        files.First(f => f.Extension.StartsWith(RazorFileExtension)).FullName
+                    )
                     .Map(component =>
                         component with
                         {
@@ -50,7 +55,7 @@ public class RegistryManager() : IRegistryManager
             .TryFrom(() => new FileInfo(path))
             .Ok()
             .Filter(file => file.Exists)
-            .Filter(file => file.Extension == ".razor")
+            .Filter(file => file.Extension == RazorFileExtension)
             .Map(file => new ComponentMetadata(
                 Name: ResolveComponentName(file),
                 Source: ResolveComponentSource(file),
@@ -73,7 +78,10 @@ public class RegistryManager() : IRegistryManager
         {
             // TODO: Consider using StringBuilder to improve performance
             var originalFileExtension = Path.GetExtension(fileName);
-            var outputFileName = Path.ChangeExtension(fileName, $"{originalFileExtension}.br");
+            var outputFileName = Path.ChangeExtension(
+                fileName,
+                originalFileExtension + PackFileExtension
+            );
             var ouputDir = Path.Combine(packInput.OutputPath, packInput.Metadata.Source);
 
             // Ensures ouput dir exists

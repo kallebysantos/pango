@@ -24,7 +24,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Spectre.Console.Testing" Version="0.48.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\Pango\Pango.csproj" />
+    <ProjectReference Include="..\..\src\Pango.Tool\Pango.Tool.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -29,19 +29,29 @@ public sealed class ComponentRegisterCreation : AsyncCommand<ComponentRegisterCr
     )
     {
         var registryManager = new RegistryManager();
-
-        var components = settings
-            .ComponentsSource.Select(src => new CreateComponentMetadataInput(src))
-            .Select(registryManager.CreateComponentMetadata)
-            .Where(result => result.IsOk())
-            .Select(result => result.Expect());
-
         var outputDir = new DirectoryInfo(settings.Output);
         if (!outputDir.Exists)
             outputDir.Create();
 
-        foreach (var component in components)
+        foreach (var source in settings.ComponentsSource)
         {
+            var componentBaseSource = string.Join(
+                Path.VolumeSeparatorChar,
+                source.Split(Path.VolumeSeparatorChar).SkipLast(1)
+            );
+
+            var componentResult = await registryManager
+                .CreateComponentMetadata(new CreateComponentMetadataInput(source))
+                .AndThen(component =>
+                    registryManager.PackComponent(
+                        new PackComponentInput(component, componentBaseSource, outputDir.FullName)
+                    )
+                );
+
+            var component = componentResult
+                .InspectErr(err => AnsiConsole.MarkupLineInterpolated($"[bold red]Fail: {err}[/]."))
+                .Expect();
+
             var metadataFileName = Path.ChangeExtension(component.Name, ".json");
             var metadataFilePath = Path.Combine(outputDir.FullName, metadataFileName);
             await using var metadataFile = File.Create(metadataFilePath);

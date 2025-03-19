@@ -11,7 +11,15 @@ public record struct CreateComponentMetadataInput(
     string LocalComponentPath
 );
 
+public record struct PackComponentInput(
+    ComponentMetadata Metadata,
+    string InputBasePath,
+    string OutputPath
+);
+
 public interface IRegistryManager
 {
     Result<ComponentMetadata, IRegistryError> CreateComponentMetadata(CreateComponentMetadataInput metadataInput);
+
+    Task<Result<ComponentMetadata, IRegistryError>> PackComponent(PackComponentInput packInput);
 }

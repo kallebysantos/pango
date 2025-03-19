@@ -1,27 +1,17 @@
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
 using System.Text.Json;
-
-using Spectre.Console;
-using Spectre.Console.Cli;
-
 using Pango.Abstractions;
 using Pango.Services.RegistryManager;
+using Spectre.Console;
+using Spectre.Console.Cli;
 
 namespace Pango.Commands;
 
 public sealed class ComponentRegisterCreation : AsyncCommand<ComponentRegisterCreation.Settings>
 {
-    private static readonly TextInfo ti = CultureInfo.CurrentCulture.TextInfo;
-
     public sealed class Settings : CommandSettings
     {
-        [NotNull]
-        [Description("URI to upload with your components.")]
-        [CommandOption("--registry-uri")]
-        public required string RegistryUri { get; set; }
-
         [NotNull]
         [Description("Folder with multiple components or single component.")]
         [CommandArgument(0, "<ARGUMENT>")]
@@ -33,23 +23,35 @@ public sealed class ComponentRegisterCreation : AsyncCommand<ComponentRegisterCr
         public required string Output { get; set; }
     }
 
-    public override async Task<int> ExecuteAsync([NotNull] CommandContext context, [NotNull] Settings settings)
+    public override async Task<int> ExecuteAsync(
+        [NotNull] CommandContext context,
+        [NotNull] Settings settings
+    )
     {
-        var registryUri = new Uri(settings.RegistryUri);
-        var registryManager = new RegistryManager(new(registryUri));
-
-        var components = settings.ComponentsSource
-            .Select(src => new CreateComponentMetadataInput(src))
-            .Select(registryManager.CreateComponentMetadata)
-            .Where(result => result.IsOk())
-            .Select(result => result.Expect());
-
+        var registryManager = new RegistryManager();
         var outputDir = new DirectoryInfo(settings.Output);
         if (!outputDir.Exists)
             outputDir.Create();
 
-        foreach (var component in components)
+        foreach (var source in settings.ComponentsSource)
         {
+            var componentBaseSource = string.Join(
+                Path.VolumeSeparatorChar,
+                source.Split(Path.VolumeSeparatorChar).SkipLast(1)
+            );
+
+            var componentResult = await registryManager
+                .CreateComponentMetadata(new CreateComponentMetadataInput(source))
+                .AndThen(component =>
+                    registryManager.PackComponent(
+                        new PackComponentInput(component, componentBaseSource, outputDir.FullName)
+                    )
+                );
+
+            var component = componentResult
+                .InspectErr(err => AnsiConsole.MarkupLineInterpolated($"[bold red]Fail: {err}[/]."))
+                .Expect();
+
             var metadataFileName = Path.ChangeExtension(component.Name, ".json");
             var metadataFilePath = Path.Combine(outputDir.FullName, metadataFileName);
             await using var metadataFile = File.Create(metadataFilePath);
@@ -98,7 +100,7 @@ public sealed class ComponentRegisterCreation : AsyncCommand<ComponentRegisterCr
 
         /*         if(path is SingleComponent searchAllComponents)
                 {
-                    AnsiConsole.WriteLine("Single: " + searchAllComponents.Path);  
+                    AnsiConsole.WriteLine("Single: " + searchAllComponents.Path);
                 } */
 
         // if(settings.AllComponents ?? false)
@@ -110,7 +112,7 @@ public sealed class ComponentRegisterCreation : AsyncCommand<ComponentRegisterCr
         //         .PageSize(10)
         //         .InstructionsText(
         //             "[grey](If you want to register all components, select none and press enter)[/]\n\n" +
-        //             "[grey](Press [blue]<space>[/] to toggle a fruit, " + 
+        //             "[grey](Press [blue]<space>[/] to toggle a fruit, " +
         //             "[green]<enter>[/] to accept)[/]\n")
         //         .AddChoices([..componentsJson.Select(c => ti.ToTitleCase(c.Name))]));
 
@@ -118,7 +120,7 @@ public sealed class ComponentRegisterCreation : AsyncCommand<ComponentRegisterCr
         //     {
         //         AnsiConsole.WriteLine("Register all components from json: " + JsonSerializer.Serialize(componentsJson));
         //     }
-        //     else 
+        //     else
         //     {
         //         foreach (string component in components)
         //         {
@@ -147,10 +149,6 @@ public sealed class ComponentRegisterCreation : AsyncCommand<ComponentRegisterCr
                     return ValidationResult.Error($"You must pass a source (-s|--src) to find the component(s) to register | Example: `registry-create-metadata path.to.register/ -s ./UI/*`\n");
                 } */
 
-        if (string.IsNullOrEmpty(settings.RegistryUri))
-        {
-            return ValidationResult.Error($"You must pass a URI to register component(s) | Example: `registry-create-metadata path.to.register/ -s ./UI/*`\n");
-        }
         return base.Validate(context, settings);
     }
 }

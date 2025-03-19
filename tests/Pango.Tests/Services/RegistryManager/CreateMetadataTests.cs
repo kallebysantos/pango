@@ -4,10 +4,8 @@ using Pango.Types;
 
 namespace Pango.Tests;
 
-public partial class RegistryManagerTests
+public class CreateMetadataTests : RegistryManagerTests
 {
-    const string componentsFolder = "Mock/Files";
-
     [Theory]
     [InlineData(["button", "Button", 4])] // Folder component
     [InlineData(["hello-world", "HelloWorld.razor", 1])] // Single file component
@@ -17,7 +15,7 @@ public partial class RegistryManagerTests
 
         var componentPath = Path.Combine(
             Directory.GetCurrentDirectory(),
-            componentsFolder,
+            ComponentsFolder,
             component
         );
 
@@ -48,7 +46,7 @@ public partial class RegistryManagerTests
 
         var componentPath = Path.Combine(
             Directory.GetCurrentDirectory(),
-            componentsFolder,
+            ComponentsFolder,
             component
         );
 

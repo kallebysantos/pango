@@ -31,20 +31,14 @@ public class RegistryManager() : IRegistryManager
             .Filter(dir =>
                 dir.Name == Path.GetFileNameWithoutExtension(metadataInput.LocalComponentPath)
             )
-            .Map(dir => dir.EnumerateFiles($"*{RazorFileExtension}*"))
-            .Filter(files => files.Any())
+            .Map(dir => new { Folder = dir, Files = dir.EnumerateFiles($"*{RazorFileExtension}*") })
+            .Filter(component => component.Files.Any())
             .OkOr<IRegistryError>(new InvalidComponentPathError())
-            .AndThen(files =>
-                ResolveComponent(
-                        files.First(f => f.Extension.StartsWith(RazorFileExtension)).FullName
-                    )
-                    .Map(component =>
-                        component with
-                        {
-                            Files = [.. files.Select(f => f.Name).Reverse()],
-                        }
-                    )
-            );
+            .Map(component => new ComponentMetadata(
+                Name: ResolveComponentName(component.Folder.Name),
+                Source: ResolveComponentSource(component.Folder.Name),
+                Files: [.. component.Files.Select(f => f.Name).Reverse()]
+            ));
     }
 
     protected static Result<ComponentMetadata, IRegistryError> ResolveComponent(string path) =>
@@ -54,17 +48,17 @@ public class RegistryManager() : IRegistryManager
             .Filter(file => file.Exists)
             .Filter(file => file.Extension == RazorFileExtension)
             .Map(file => new ComponentMetadata(
-                Name: ResolveComponentName(file),
-                Source: ResolveComponentSource(file),
+                Name: ResolveComponentName(file.Name),
+                Source: ResolveComponentSource(file.Name),
                 Files: [file.Name]
             ))
             .OkOr<IRegistryError>(new InvalidComponentPathError());
 
-    protected static string ResolveComponentName(FileInfo componentFile) =>
-        componentFile.Name.Replace(componentFile.Extension, string.Empty).ToKebabCase();
+    protected static string ResolveComponentName(string componentPath) =>
+        ResolveComponentSource(componentPath).ToKebabCase();
 
-    protected static string ResolveComponentSource(FileInfo componentFile) =>
-        componentFile.Name.Replace(componentFile.Extension, string.Empty);
+    protected static string ResolveComponentSource(string componentPath) =>
+        Path.GetFileNameWithoutExtension(componentPath);
 
     public async Task<Result<ComponentMetadata, IRegistryError>> PackComponent(
         PackComponentInput packInput

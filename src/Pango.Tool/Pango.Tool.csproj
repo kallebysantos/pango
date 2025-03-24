@@ -17,7 +17,7 @@
 
   <PropertyGroup Label="Package/Assembly Manifest Properties">
     <PackageId>PangoUI.Tool</PackageId>
-    <Version>0.0.2-develop.0</Version>
+    <Version>0.0.3-develop.1</Version>
     
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>pango</ToolCommandName>
@@ -30,7 +30,7 @@
 
     <Authors>Kalleby Santos;Carlos Saraiva</Authors>
 
-    <PackageProjectUrl>https://github.com/kallebysantos/pango-ui</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/kallebysantos/pango</PackageProjectUrl>
     <PackageReleaseNotes>$(PackageProjectUrl)/releases</PackageReleaseNotes>
     <RepositoryUrl>$(PackageProjectUrl).git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>

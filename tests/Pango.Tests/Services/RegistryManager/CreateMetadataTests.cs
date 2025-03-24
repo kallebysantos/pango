@@ -7,7 +7,8 @@ namespace Pango.Tests;
 public class CreateMetadataTests : RegistryManagerTests
 {
     [Theory]
-    [InlineData(["button", "Button", 4])] // Folder component
+    [InlineData(["button", "Button", 5])] // Folder component
+    [InlineData(["data-table", "DataTable", 2])] // Folder component
     [InlineData(["hello-world", "HelloWorld.razor", 1])] // Single file component
     public void ShouldCreateMetadataForValidComponent(string name, string component, int fileCount)
     {

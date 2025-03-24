@@ -10,7 +10,7 @@ namespace Pango.Tests;
 public class ComponentRegisterCreationTest : IDisposable
 {
     public string ComponentsPath => Path.Combine(Directory.GetCurrentDirectory(), "Mock/Files");
-    public string OutputPath => Path.Combine(Directory.GetCurrentDirectory(), "publish-cmd");
+    public string OutputPath => Path.Combine(Directory.GetCurrentDirectory(), "publish-tool");
 
     public void Dispose()
     {
@@ -19,7 +19,7 @@ public class ComponentRegisterCreationTest : IDisposable
     }
 
     [Theory]
-    [InlineData(["Button", "button.json", "Button", 4])] // Folder component
+    [InlineData(["Button", "button.json", "Button", 5])] // Folder component
     [InlineData(["HelloWorld.razor", "hello-world.json", "HelloWorld", 1])] // Single file component
     public void ShouldCreateRegisterForValidComponents(
         string componentInput,

@@ -18,6 +18,7 @@ public class PackComponentTests : RegistryManagerTests, IDisposable
 
     [Theory]
     [InlineData(["Button"])] // Folder component
+    [InlineData(["DataTable"])] // Folder component
     [InlineData(["HelloWorld.razor"])] // Single file component
     public async Task ShouldPackComponent(string component)
     {

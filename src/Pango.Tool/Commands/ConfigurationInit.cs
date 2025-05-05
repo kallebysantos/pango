@@ -1,15 +1,14 @@
-using System.Text;
-using Spectre.Console;
-using Spectre.Console.Cli;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
-
-using Pango.Types;
-using Pango.Extensions;
+using System.Text;
 using Pango.Abstractions;
+using Pango.Extensions;
 using Pango.Services.RegistryClient;
-
+using Pango.Types;
+using Spectre.Console;
+using Spectre.Console.Cli;
 using StringExtensions = Pango.Extensions.StringExtensions;
+
 namespace Pango.Commands;
 
 public sealed class ConfigurationInitSettings : CommandSettings
@@ -32,8 +31,9 @@ public sealed class ConfigurationInitSettings : CommandSettings
 
 public sealed class ConfigurationInit : AsyncCommand<ConfigurationInitSettings>
 {
-    static readonly string RegistryBaseDownloadUrl = "https://raw.githubusercontent.com/kallebysantos/pango-ui/main/src/Pango.Components";
-    static readonly string RegistryBaseSchema = "https://kallebysantos.github.io/pango-ui";
+    static readonly string RegistryBaseDownloadUrl =
+        "https://kallebysantos.github.io/pango-ui/api/";
+    static readonly string RegistryBaseSchema = "https://kallebysantos.github.io/pango-ui/api/";
 
     public override async Task<int> ExecuteAsync(
         [NotNull] CommandContext context,
@@ -44,7 +44,7 @@ public sealed class ConfigurationInit : AsyncCommand<ConfigurationInitSettings>
         {
             RegistrySchemaUri = settings.RegistryUri,
             TargetComponentNamespace = settings.Namespace,
-            LocalComponentPath = settings.Output
+            LocalComponentPath = settings.Output,
         };
 
         var savedConfig = await AnsiConsole
@@ -54,56 +54,68 @@ public sealed class ConfigurationInit : AsyncCommand<ConfigurationInitSettings>
                 func: _ => config.PersistLocalConfigFile(filepath: "./pango-ui.config.json")
             );
 
-        await (await savedConfig
+        savedConfig
             .Inspect(result => AnsiConsole.MarkupLineInterpolated($"[bold grey]Saved: {result}[/]"))
-            .InspectErr(err => AnsiConsole.MarkupLineInterpolated($"[bold red]Fail: {err}[/]."))
-            .AndThen(async _ =>
-                AnsiConsole.Confirm("Would like to add Tailwind Helper?")
-                    ? await GetRegistryRawFile(settings.Namespace, settings.Output, "Utils/TailwindHelper.cs")
-                    : new OkResult()
-                ))
-            .AndThen(async _ =>
-                AnsiConsole.Confirm("Would like to add UI Component base class?")
-                    ? await GetRegistryRawFile(settings.Namespace, settings.Output, "UI/UIComponent.cs")
-                    : new OkResult()
-                );
+            .InspectErr(err => AnsiConsole.MarkupLineInterpolated($"[bold red]Fail: {err}[/]."));
+
+        /*.AndThen(async _ =>
+            AnsiConsole.Confirm("Would like to add Tailwind Helper?")
+                ? await GetRegistryRawFile(settings.Namespace, settings.Output, "Utils/TailwindHelper.cs")
+                : new OkResult()
+            ))
+        .AndThen(async _ =>
+            AnsiConsole.Confirm("Would like to add UI Component base class?")
+                ? await GetRegistryRawFile(settings.Namespace, settings.Output, "UI/UIComponent.cs")
+                : new OkResult()
+            )*/
 
         return Convert.ToInt32(savedConfig.IsOk());
     }
 
-
-    public override ValidationResult Validate(CommandContext context, ConfigurationInitSettings settings)
+    public override ValidationResult Validate(
+        CommandContext context,
+        ConfigurationInitSettings settings
+    )
     {
         settings.Namespace ??= AskNamespace();
-        settings.Output ??= AskOutput(defaultValue: "./" + string.Join('/', settings.Namespace.Split('.').Skip(1)));
+        settings.Output ??= AskOutput(
+            defaultValue: "./" + string.Join('/', settings.Namespace.Split('.').Skip(1))
+        );
 
         settings.RegistryUri ??= AskRegistryUri(defaultValue: RegistryBaseSchema);
 
         return base.Validate(context, settings);
     }
 
-    static string AskRegistryUri(string defaultValue) => AnsiConsole
-        .Confirm("Would like to set a component registry?[grey] Default: Pango UI[/]", defaultValue: false)
-        ? AnsiConsole.Ask<string>("Enter the component registry url:")
-        : defaultValue;
+    static string AskRegistryUri(string defaultValue) =>
+        AnsiConsole.Confirm(
+            "Would like to set a component registry?[grey] Default: Pango UI[/]",
+            defaultValue: false
+        )
+            ? AnsiConsole.Ask<string>("Enter the component registry url:")
+            : defaultValue;
 
     static string AskNamespace()
     {
         var askMessage = "Enter the target namespace:";
 
-        return Option.From(Value: new DirectoryInfo("./")
-            .EnumerateFiles(searchPattern: "*.csproj")
-            .FirstOrDefault()
-        )
-        .Map(file => string.Join('.', Path.GetFileNameWithoutExtension(file.Name), "UI"))
-        .Match(
-            some: projectFileName => AnsiConsole.Ask(askMessage, projectFileName),
-            none: () => AnsiConsole.Ask<string>(askMessage)
-        );
+        return Option
+            .From(
+                Value: new DirectoryInfo("./")
+                    .EnumerateFiles(searchPattern: "*.csproj")
+                    .FirstOrDefault()
+            )
+            .Map(file =>
+                string.Join('.', Path.GetFileNameWithoutExtension(file.Name), "Components", "UI")
+            )
+            .Match(
+                some: projectFileName => AnsiConsole.Ask(askMessage, projectFileName),
+                none: () => AnsiConsole.Ask<string>(askMessage)
+            );
     }
 
-    static string AskOutput(string defaultValue)
-        => AnsiConsole.Ask("Enter the target output folder:", defaultValue);
+    static string AskOutput(string defaultValue) =>
+        AnsiConsole.Ask("Enter the target output folder:", defaultValue);
 
     static async Task<Result<IOk, IError>> GetRegistryRawFile(
         string @namespace,
@@ -115,21 +127,21 @@ public sealed class ConfigurationInit : AsyncCommand<ConfigurationInitSettings>
 
         var destinationNamespace = StringExtensions.JoinMerge(
             separator: '.',
-            values: [
-                ..@namespace.Split('.'),
-                ..registryFilePath.Replace(Path.GetFileName(registryFilePath), string.Empty).Split('/')
-            ]);
+            values:
+            [
+                .. @namespace.Split('.'),
+                .. registryFilePath
+                    .Replace(Path.GetFileName(registryFilePath), string.Empty)
+                    .Split('/'),
+            ]
+        );
 
         var destinationFilepath = StringExtensions.JoinMerge(
             separator: '/',
-            values: [
-                ..componentsFolder.Split('/'),
-                ..registryFilePath.Split('/')
-            ]);
-
-        var destinationFileInfo = new FileInfo(
-            fileName: destinationFilepath
+            values: [.. componentsFolder.Split('/'), .. registryFilePath.Split('/')]
         );
+
+        var destinationFileInfo = new FileInfo(fileName: destinationFilepath);
 
         destinationFileInfo.Directory?.Create();
 
@@ -137,26 +149,39 @@ public sealed class ConfigurationInit : AsyncCommand<ConfigurationInitSettings>
 
         return await AnsiConsole
             .Status()
-            .StartAsync($"Downloading {destinationFileInfo.Name}...", async ctx =>
-            {
-                var fileStream = await Result.TryFrom(() => httpClient.GetStreamAsync(registryFileUrl));
-
-                var downloadResult = await fileStream
-                    .MapErr(ExceptionError.From)
-                    .Inspect(result => ctx.Status($"Download: {registryFileUrl}"))
-                    .InspectErr(err => AnsiConsole.MarkupLineInterpolated($"[bold red]Fail: {err}[/]."))
-                    .AndThen(async item =>
-                        await StreamingComponent.WriteComponentStream(
-                            stream: item,
-                            filepath: destinationFileInfo.FullName,
-                            @namespace: destinationNamespace
-                        )
+            .StartAsync(
+                $"Downloading {destinationFileInfo.Name}...",
+                async ctx =>
+                {
+                    var fileStream = await Result.TryFrom(
+                        () => httpClient.GetStreamAsync(registryFileUrl)
                     );
 
-                return downloadResult
-                    .Inspect(result => AnsiConsole.MarkupLineInterpolated($"[bold grey]Saved: {destinationFileInfo.FullName}[/]"))
-                    .InspectErr(err => AnsiConsole.MarkupLineInterpolated($"[bold red]Fail: {err}[/]."));
+                    var downloadResult = await fileStream
+                        .MapErr(ExceptionError.From)
+                        .Inspect(result => ctx.Status($"Download: {registryFileUrl}"))
+                        .InspectErr(err =>
+                            AnsiConsole.MarkupLineInterpolated($"[bold red]Fail: {err}[/].")
+                        )
+                        .AndThen(async item =>
+                            await StreamingComponent.WriteComponentStream(
+                                stream: item,
+                                filepath: destinationFileInfo.FullName,
+                                @namespace: destinationNamespace
+                            )
+                        );
 
-            });
+                    return downloadResult
+                        .Inspect(result =>
+                            AnsiConsole.MarkupLineInterpolated(
+                                $"[bold grey]Saved: {destinationFileInfo.FullName}[/]"
+                            )
+                        )
+                        .InspectErr(err =>
+                            AnsiConsole.MarkupLineInterpolated($"[bold red]Fail: {err}[/].")
+                        );
+                }
+            );
     }
 }
+

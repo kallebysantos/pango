@@ -5,11 +5,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-  
-  <ItemGroup>
-    <PackageReference Include="Spectre.Console" Version="0.48.0" />
-    <PackageReference Include="Spectre.Console.Cli" Version="0.48.0" />
-  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Pango\Pango.csproj" />
@@ -40,5 +35,10 @@
   
   <ItemGroup Label="Package Files">
     <None Include="../../assets/logo.png" Pack="true" PackagePath="./icon.png" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="Spectre.Console" Version="0.50.0" />
+    <PackageReference Include="Spectre.Console.Cli" Version="0.50.0" />
   </ItemGroup>
 </Project>

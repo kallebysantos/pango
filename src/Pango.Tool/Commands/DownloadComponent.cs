@@ -34,10 +34,7 @@ public sealed class DownloadComponentSettings : CommandSettings
 
 public sealed class DownloadComponent : AsyncCommand<DownloadComponentSettings>
 {
-    public override async Task<int> ExecuteAsync(
-        [NotNull] CommandContext context,
-        [NotNull] DownloadComponentSettings settings
-    )
+    public static async Task<Result<IOk, IError>> Download(DownloadComponentSettings settings)
     {
         AnsiConsole.MarkupLineInterpolated(
             $"[bold grey]Adding Component:[/] [underline]{settings.ComponentName}[/]"
@@ -64,7 +61,7 @@ public sealed class DownloadComponent : AsyncCommand<DownloadComponentSettings>
             .InspectErr(err => AnsiConsole.MarkupLineInterpolated($"[bold red]Fail: {err}[/]."));
 
         if (foundComponentResult.Ok() is not Some<Component<Resolved>> component)
-            return 1;
+            return Result.Err<IOk, IError>(foundComponentResult.ExpectErr());
 
         await AnsiConsole
             .Status()
@@ -100,7 +97,17 @@ public sealed class DownloadComponent : AsyncCommand<DownloadComponentSettings>
                 }
             );
 
-        return 0;
+        return new OkResult();
+    }
+
+    public override async Task<int> ExecuteAsync(
+        [NotNull] CommandContext context,
+        [NotNull] DownloadComponentSettings settings
+    )
+    {
+        var result = await Download(settings);
+
+        return Convert.ToInt32(result.IsOk());
     }
 
     public override ValidationResult Validate(

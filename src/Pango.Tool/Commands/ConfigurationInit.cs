@@ -35,10 +35,7 @@ public sealed class ConfigurationInit : AsyncCommand<ConfigurationInitSettings>
         "https://kallebysantos.github.io/pango-ui/api/";
     static readonly string RegistryBaseSchema = "https://kallebysantos.github.io/pango-ui/api/";
 
-    public override async Task<int> ExecuteAsync(
-        [NotNull] CommandContext context,
-        [NotNull] ConfigurationInitSettings settings
-    )
+    public static async Task<Result<IOk, IError>> Init(ConfigurationInitSettings settings)
     {
         var config = new LocalConfig()
         {
@@ -47,6 +44,8 @@ public sealed class ConfigurationInit : AsyncCommand<ConfigurationInitSettings>
             LocalComponentPath = settings.Output,
         };
 
+        var isPangoRegistry = config.RegistrySchemaUri == RegistryBaseSchema;
+
         var savedConfig = await AnsiConsole
             .Status()
             .StartAsync(
@@ -54,22 +53,32 @@ public sealed class ConfigurationInit : AsyncCommand<ConfigurationInitSettings>
                 func: _ => config.PersistLocalConfigFile(filepath: "./pango-ui.config.json")
             );
 
-        savedConfig
+        var savedConfigResult = savedConfig
             .Inspect(result => AnsiConsole.MarkupLineInterpolated($"[bold grey]Saved: {result}[/]"))
             .InspectErr(err => AnsiConsole.MarkupLineInterpolated($"[bold red]Fail: {err}[/]."));
 
-        /*.AndThen(async _ =>
-            AnsiConsole.Confirm("Would like to add Tailwind Helper?")
-                ? await GetRegistryRawFile(settings.Namespace, settings.Output, "Utils/TailwindHelper.cs")
-                : new OkResult()
-            ))
-        .AndThen(async _ =>
-            AnsiConsole.Confirm("Would like to add UI Component base class?")
-                ? await GetRegistryRawFile(settings.Namespace, settings.Output, "UI/UIComponent.cs")
-                : new OkResult()
-            )*/
+        if (!isPangoRegistry)
+        {
+            return savedConfigResult.Map<IOk>(_ => new OkResult());
+        }
 
-        return Convert.ToInt32(savedConfig.IsOk());
+        var result = await savedConfigResult.AndThen(async _ =>
+            AnsiConsole.Confirm("Would like to add [bold]PageScript[/] component?")
+                ? await AddComponent(config, "page-script")
+                : new OkResult()
+        );
+
+        return result;
+    }
+
+    public override async Task<int> ExecuteAsync(
+        [NotNull] CommandContext context,
+        [NotNull] ConfigurationInitSettings settings
+    )
+    {
+        var result = await Init(settings);
+
+        return Convert.ToInt32(result.IsOk());
     }
 
     public override ValidationResult Validate(
@@ -117,71 +126,16 @@ public sealed class ConfigurationInit : AsyncCommand<ConfigurationInitSettings>
     static string AskOutput(string defaultValue) =>
         AnsiConsole.Ask("Enter the target output folder:", defaultValue);
 
-    static async Task<Result<IOk, IError>> GetRegistryRawFile(
-        string @namespace,
-        string componentsFolder,
-        string registryFilePath
-    )
+    static async Task<Result<IOk, IError>> AddComponent(LocalConfig config, string componentName)
     {
-        var registryFileUrl = Path.Combine(RegistryBaseDownloadUrl, registryFilePath);
-
-        var destinationNamespace = StringExtensions.JoinMerge(
-            separator: '.',
-            values:
-            [
-                .. @namespace.Split('.'),
-                .. registryFilePath
-                    .Replace(Path.GetFileName(registryFilePath), string.Empty)
-                    .Split('/'),
-            ]
+        return await DownloadComponent.Download(
+            new()
+            {
+                RegistryUri = config.RegistrySchemaUri,
+                Output = config.LocalComponentPath,
+                Namespace = config.TargetComponentNamespace,
+                ComponentName = componentName,
+            }
         );
-
-        var destinationFilepath = StringExtensions.JoinMerge(
-            separator: '/',
-            values: [.. componentsFolder.Split('/'), .. registryFilePath.Split('/')]
-        );
-
-        var destinationFileInfo = new FileInfo(fileName: destinationFilepath);
-
-        destinationFileInfo.Directory?.Create();
-
-        var httpClient = new HttpClient();
-
-        return await AnsiConsole
-            .Status()
-            .StartAsync(
-                $"Downloading {destinationFileInfo.Name}...",
-                async ctx =>
-                {
-                    var fileStream = await Result.TryFrom(
-                        () => httpClient.GetStreamAsync(registryFileUrl)
-                    );
-
-                    var downloadResult = await fileStream
-                        .MapErr(ExceptionError.From)
-                        .Inspect(result => ctx.Status($"Download: {registryFileUrl}"))
-                        .InspectErr(err =>
-                            AnsiConsole.MarkupLineInterpolated($"[bold red]Fail: {err}[/].")
-                        )
-                        .AndThen(async item =>
-                            await StreamingComponent.WriteComponentStream(
-                                stream: item,
-                                filepath: destinationFileInfo.FullName,
-                                @namespace: destinationNamespace
-                            )
-                        );
-
-                    return downloadResult
-                        .Inspect(result =>
-                            AnsiConsole.MarkupLineInterpolated(
-                                $"[bold grey]Saved: {destinationFileInfo.FullName}[/]"
-                            )
-                        )
-                        .InspectErr(err =>
-                            AnsiConsole.MarkupLineInterpolated($"[bold red]Fail: {err}[/].")
-                        );
-                }
-            );
     }
 }
-

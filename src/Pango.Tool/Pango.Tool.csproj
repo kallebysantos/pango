@@ -12,7 +12,7 @@
 
   <PropertyGroup Label="Package/Assembly Manifest Properties">
     <PackageId>PangoUI.Tool</PackageId>
-    <Version>0.0.3-develop.2</Version>
+    <Version>0.0.3-develop.3</Version>
     
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>pango</ToolCommandName>

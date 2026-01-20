@@ -52,6 +52,7 @@ public sealed class ComponentRegisterCreation : AsyncCommand<ComponentRegisterCr
 
       var component = componentResult
           .InspectErr(err => AnsiConsole.MarkupLineInterpolated($"[bold red]Fail: {err}[/]."))
+          .InspectErr(err => AnsiConsole.MarkupLineInterpolated($"[bold red]Fail: {err}[/]."))
           .Expect();
 
       var metadataFileName = Path.ChangeExtension(component.Name, ".json");

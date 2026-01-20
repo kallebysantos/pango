@@ -5,7 +5,7 @@ namespace Pango.Services.RegistryManager;
 
 public interface IRegistryError;
 
-public record struct InvalidComponentPathError : IRegistryError;
+public record struct InvalidComponentPathError(string? Path) : IRegistryError;
 
 public record struct CreateComponentMetadataInput(
     string LocalComponentPath
@@ -19,7 +19,7 @@ public record struct PackComponentInput(
 
 public interface IRegistryManager
 {
-    Result<ComponentMetadata, IRegistryError> CreateComponentMetadata(CreateComponentMetadataInput metadataInput);
+  Result<ComponentMetadata, IRegistryError> CreateComponentMetadata(CreateComponentMetadataInput metadataInput);
 
-    Task<Result<ComponentMetadata, IRegistryError>> PackComponent(PackComponentInput packInput);
+  Task<Result<ComponentMetadata, IRegistryError>> PackComponent(PackComponentInput packInput);
 }
